@@ -40,4 +40,4 @@ The H9 transmits BPM and RR intervals, but not the ECG waveform. This viewer hel
 
 ## Attribution
 
-The interface and reading flow were adapted from [Pure Blue Heart](https://github.com/benwrk/pure-blue-heart) by benwrk. The Apache-2.0 license is preserved in `LICENSE`; this version removes PMD/ECG capture and remote analytics.
+The interface and reading flow were adapted from [Pure Blue Heart](https://github.com/benwrk/pure-blue-heart) by benwrk. Adapted material remains under Apache-2.0; see `LICENSE`. Original contributions made for this project are additionally available under the MIT License in `LICENSE-MIT`. This version removes PMD/ECG capture and remote analytics.
