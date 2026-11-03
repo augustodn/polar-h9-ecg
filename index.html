@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08111d">
+  <title>Polar H9 · RR Viewer</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07101a;
+      --panel: #0c1928;
+      --panel-2: #101f30;
+      --border: #1d344b;
+      --text: #e8f2fb;
+      --muted: #94a9bc;
+      --blue: #58baff;
+      --blue-dim: #163b59;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 18% 0%, #102943 0, transparent 38%), var(--bg);
+      color: var(--text);
+      font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    button {
+      border: 1px solid #3476a8;
+      border-radius: 7px;
+      background: #123654;
+      color: #e9f6ff;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { background: #194b72; }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+    button.secondary { background: transparent; border-color: var(--border); color: var(--muted); }
+    header, main, footer { width: min(1240px, calc(100% - 32px)); margin-inline: auto; }
+    header {
+      min-height: 86px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand { display: flex; align-items: center; gap: 13px; }
+    .brand-icon { font-size: 31px; color: var(--blue); }
+    h1 { margin: 0; font-size: 19px; letter-spacing: .02em; }
+    .subtitle { color: var(--muted); font-size: 13px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      align-items: start;
+      gap: 16px;
+      padding-block: 18px 30px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(145deg, rgba(16,31,48,.98), rgba(9,19,31,.98));
+      box-shadow: 0 12px 32px #0003;
+    }
+    .chart-card { min-width: 0; padding: 18px 18px 12px; }
+    .card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    h2 { margin: 0; font-size: 17px; }
+    .hint { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    #deviceState {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--muted);
+      padding: 4px 9px;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+    #deviceState.connected { color: #9de4bd; border-color: #31654a; background: #102b20; }
+    .chart-wrap { position: relative; height: min(58vh, 510px); min-height: 300px; margin-top: 16px; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #emptyChart {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      padding: 20px;
+      color: var(--muted);
+      text-align: center;
+      pointer-events: none;
+    }
+    #emptyChart strong { color: #cbd9e7; font-size: 16px; }
+    #emptyChart span { margin-top: 5px; font-size: 13px; }
+    .axis-note { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; }
+    aside { display: grid; gap: 14px; }
+    .metrics, .recent { padding: 16px; }
+    .metric { padding: 10px 0; border-bottom: 1px solid #1b2d40; }
+    .metric:last-child { border-bottom: 0; padding-bottom: 0; }
+    .metric-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
+    .metric-value { margin-top: 2px; font-size: 31px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .metric-value small { color: var(--muted); font-size: 13px; font-weight: 500; }
+    .recent h2 { margin-bottom: 10px; }
+    #rrList { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; list-style: none; margin: 0; padding: 0; }
+    #rrList li { display: flex; justify-content: space-between; gap: 7px; color: #c8d7e5; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    #rrList .rr-value { color: var(--blue); font-variant-numeric: tabular-nums; }
+    .notice {
+      grid-column: 1 / -1;
+      padding: 13px 16px;
+      color: #c2d2e1;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .notice strong { color: #f0d49a; }
+    .notice a { color: #8fcfff; }
+    footer { padding: 0 0 22px; color: #71879a; font-size: 12px; }
+    #message { min-height: 22px; color: #f0d49a; font-size: 13px; }
+    @media (max-width: 820px) {
+      main { grid-template-columns: 1fr; }
+      aside { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .notice { grid-column: 1; }
+    }
+    @media (max-width: 560px) {
+      header { align-items: flex-start; flex-direction: column; padding-block: 15px; }
+      .actions { width: 100%; }
+      .actions button { flex: 1; }
+      aside { grid-template-columns: 1fr; }
+      .chart-card { padding: 14px 12px 10px; }
+      .chart-wrap { height: 360px; min-height: 260px; }
+      #deviceState { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">♥</span>
+      <div>
+        <h1>Polar H9 · RR Viewer</h1>
+        <div class="subtitle">Beat-to-beat intervals · local BLE connection</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="connectBtn" type="button">Connect Polar H9</button>
+      <button id="disconnectBtn" class="secondary" type="button" disabled>Disconnect</button>
+      <button id="downloadBtn" class="secondary" type="button" disabled>Download CSV</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card chart-card" aria-labelledby="chartTitle">
+      <div class="card-heading">
+        <div>
+          <h2 id="chartTitle">RR intervals</h2>
+          <p class="hint">Latest 100 beats · milliseconds between beats</p>
+        </div>
+        <span id="deviceState" role="status">Disconnected</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="rrChart" aria-label="RR interval chart in milliseconds"></canvas>
+        <div id="emptyChart">
+          <strong>Waiting for RR data</strong>
+          <span>Wear the strap, moisten the electrodes, and connect the H9.</span>
+        </div>
+      </div>
+      <div class="axis-note"><span>Horizontal axis: RR interval sequence</span><span id="sampleCount">0 intervals</span></div>
+      <div id="message" aria-live="polite"></div>
+    </section>
+
+    <aside>
+      <section class="card metrics" aria-label="Current readings">
+        <div class="metric">
+          <div class="metric-label">Sensor heart rate</div>
+          <div class="metric-value"><span id="bpmValue">--</span> <small>bpm</small></div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Latest RR interval</div>
+          <div class="metric-value"><span id="lastRrValue">--</span> <small>ms</small></div>
+        </div>
+      </section>
+
+      <section class="card recent">
+        <h2>Recent intervals</h2>
+        <ul id="rrList" aria-live="polite">
+          <li><span>Connect the H9</span><span class="rr-value">-- ms</span></li>
+        </ul>
+      </section>
+    </aside>
+
+    <section class="card notice">
+      <strong>Descriptive readings, not a diagnosis.</strong>
+      The H9 transmits heart rate and RR intervals; it does not transmit the ECG waveform.
+      This page cannot detect or rule out arrhythmias. If you are concerned about an irregular rhythm, consult a healthcare professional
+      and share the recording; evaluation may require an ECG or clinical monitor.
+      <a href="https://www.heart.org/en/health-topics/arrhythmia/symptoms-diagnosis--monitoring-of-arrhythmia/common-tests-for-arrhythmia" target="_blank" rel="noreferrer">American Heart Association: common tests for arrhythmia</a>
+    </section>
+  </main>
+
+  <footer>
+    Data stays in memory in this tab. Download the CSV before closing it.
+    Inspired and adapted from Pure Blue Heart by benwrk (Apache-2.0); PMD/ECG capture was removed.
+  </footer>
+
+  <script>
+    const HR_SERVICE = "heart_rate";
+    const HR_MEASUREMENT = "heart_rate_measurement";
+    const WINDOW_POINTS = 100;
+
+    const canvas = document.getElementById("rrChart");
+    const ctx = canvas.getContext("2d");
+    const emptyChart = document.getElementById("emptyChart");
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const deviceState = document.getElementById("deviceState");
+    const message = document.getElementById("message");
+
+    let device = null;
+    let characteristic = null;
+    let sensorBpm = null;
+    let records = [];
+    let chartPoints = [];
+    let packetNumber = 0;
+
+    function setStatus(text, connected, connecting) {
+      deviceState.textContent = text;
+      deviceState.classList.toggle("connected", Boolean(connected));
+      connectBtn.disabled = Boolean(connected || connecting);
+      disconnectBtn.disabled = !connected;
+    }
+
+    function parseHeartRate(value) {
+      if (!value || value.byteLength < 2) throw new RangeError("Incomplete HR packet");
+      const flags = value.getUint8(0);
+      const uses16BitHr = (flags & 0x01) !== 0;
+      const hasEnergy = (flags & 0x08) !== 0;
+      const hasRr = (flags & 0x10) !== 0;
+      let offset = 1;
+
+      const bpm = uses16BitHr ? value.getUint16(offset, true) : value.getUint8(offset);
+      offset += uses16BitHr ? 2 : 1;
+      if (offset > value.byteLength) throw new RangeError("Incomplete HR packet");
+
+      if (hasEnergy) {
+        if (offset + 2 > value.byteLength) throw new RangeError("Incomplete HR packet");
+        offset += 2;
+      }
+
+      const rr = [];
+      if (hasRr) {
+        while (offset + 1 < value.byteLength) {
+          const raw = value.getUint16(offset, true);
+          offset += 2;
+          if (raw > 0) rr.push((raw * 1000) / 1024);
+        }
+      }
+      return { bpm, rr };
+    }
+
+    function onHeartRate(event) {
+      try {
+        const sample = parseHeartRate(event.target.value);
+        if (sample.bpm > 0) {
+          sensorBpm = sample.bpm;
+          document.getElementById("bpmValue").textContent = String(sensorBpm);
+        }
+        if (sample.rr.length === 0) return;
+
+        const receivedAt = new Date().toISOString();
+        packetNumber += 1;
+        for (const rrMs of sample.rr) {
+          const point = {
+            sequence: records.length + 1,
+            packet: packetNumber,
+            rrMs: rrMs,
+            sensorBpm: sensorBpm,
+            receivedAt: receivedAt
+          };
+          // shortcut: one browser session stays in memory; add local persistence for long unattended captures.
+          records.push(point);
+          chartPoints.push(point);
+          if (chartPoints.length > WINDOW_POINTS) chartPoints.shift();
+        }
+
+        const latest = sample.rr[sample.rr.length - 1];
+        document.getElementById("lastRrValue").textContent = String(Math.round(latest));
+        document.getElementById("sampleCount").textContent =
+          records.length + (records.length === 1 ? " interval" : " intervals");
+        downloadBtn.disabled = false;
+        message.textContent = "";
+        updateRecentIntervals();
+        drawChart();
+      } catch (error) {
+        message.textContent = "Could not read an RR packet: " + error.message;
+      }
+    }
+
+    function updateRecentIntervals() {
+      const list = document.getElementById("rrList");
+      list.replaceChildren();
+      const latest = records.slice(-20).reverse();
+      for (let i = 0; i < latest.length; i++) {
+        const row = document.createElement("li");
+        const bpm = Math.round(60000 / latest[i].rrMs);
+        row.innerHTML = "<span>#" + (records.length - i) + "</span><span class=\"rr-value\">" +
+          Math.round(latest[i].rrMs) + " ms / " + bpm + " bpm</span>";
+        list.appendChild(row);
+      }
+    }
+
+    function drawChart() {
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+      if (width < 1 || height < 1) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      emptyChart.hidden = chartPoints.length > 0;
+      const left = 56, right = 16, top = 16, bottom = 28;
+      const plotWidth = width - left - right;
+      const plotHeight = height - top - bottom;
+      if (plotWidth <= 0 || plotHeight <= 0) return;
+
+      let min = 400, max = 1200;
+      if (chartPoints.length > 0) {
+        min = Math.min.apply(null, chartPoints.map(function(p) { return p.rrMs; }));
+        max = Math.max.apply(null, chartPoints.map(function(p) { return p.rrMs; }));
+        const padding = Math.max(40, (max - min) * 0.12);
+        min -= padding;
+        max += padding;
+      }
+      if (max <= min) max = min + 1;
+
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(126, 164, 195, .15)";
+      ctx.fillStyle = "#91a9bd";
+
+      for (let i = 0; i <= 4; i++) {
+        const y = top + (plotHeight * i) / 4;
+        const value = max - ((max - min) * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(width - right, y);
+        ctx.stroke();
+        ctx.fillText(String(Math.round(value)), 5, y + 4);
+      }
+      for (let i = 0; i <= 4; i++) {
+        const x = left + (plotWidth * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, height - bottom);
+        ctx.stroke();
+        const label = i === 4 ? "now" : "−" + (WINDOW_POINTS * (4 - i)) / 4;
+        ctx.fillText(label, x - 14, height - 7);
+      }
+
+      if (chartPoints.length === 0) return;
+      function xFor(point) {
+        const latest = records.length;
+        return left + ((point.sequence - (latest - WINDOW_POINTS + 1)) / (WINDOW_POINTS - 1)) * plotWidth;
+      }
+      function yFor(point) {
+        return top + ((max - point.rrMs) / (max - min)) * plotHeight;
+      }
+
+      ctx.beginPath();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#58baff";
+      for (let i = 0; i < chartPoints.length; i++) {
+        const x = xFor(chartPoints[i]);
+        const y = yFor(chartPoints[i]);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = "#c4e8ff";
+      for (const point of chartPoints) {
+        ctx.beginPath();
+        ctx.arc(xFor(point), yFor(point), 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    async function connect() {
+      message.textContent = "";
+      if (!window.isSecureContext || !navigator.bluetooth) {
+        message.textContent = "Web Bluetooth requires Chrome or Edge over HTTPS or localhost.";
+        return;
+      }
+
+      connectBtn.disabled = true;
+      setStatus("Searching for Polar H9…", false, true);
+      try {
+        device = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: "Polar H9" }],
+          optionalServices: [HR_SERVICE]
+        });
+        device.addEventListener("gattserverdisconnected", onDisconnected);
+        setStatus("Connecting…", false, true);
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(HR_SERVICE);
+        characteristic = await service.getCharacteristic(HR_MEASUREMENT);
+        await characteristic.startNotifications();
+        characteristic.addEventListener("characteristicvaluechanged", onHeartRate);
+
+        setStatus(device.name || "Polar H9 connected", true);
+        message.textContent = "Receiving data. RR appears when the sensor includes it in a notification.";
+      } catch (error) {
+        if (device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+        device = null;
+        characteristic = null;
+        setStatus("Disconnected", false);
+        if (error.name !== "NotFoundError") message.textContent = "Connection failed: " + error.message;
+      }
+    }
+
+    function onDisconnected() {
+      if (characteristic) characteristic.removeEventListener("characteristicvaluechanged", onHeartRate);
+      characteristic = null;
+      device = null;
+      setStatus("Disconnected", false);
+      message.textContent = "Sensor disconnected. The current recording is still available to download.";
+    }
+
+    function disconnect() {
+      if (device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+      else onDisconnected();
+    }
+
+    function downloadCsv() {
+      if (records.length === 0) return;
+      const rows = [["sequence", "packet", "rr_ms", "bpm_from_rr", "sensor_bpm", "notification_received_at"]];
+      for (let i = 0; i < records.length; i++) {
+        const p = records[i];
+        rows.push([
+          String(i + 1),
+          String(p.packet),
+          p.rrMs.toFixed(2),
+          (60000 / p.rrMs).toFixed(2),
+          p.sensorBpm === null ? "" : String(p.sensorBpm),
+          p.receivedAt
+        ]);
+      }
+      const csv = rows.map(function(row) { return row.join(","); }).join("\r\n");
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "polar-h9-rr-" + new Date().toISOString().slice(0, 10) + ".csv";
+      link.click();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function resizeChart() { drawChart(); }
+    connectBtn.addEventListener("click", connect);
+    disconnectBtn.addEventListener("click", disconnect);
+    downloadBtn.addEventListener("click", downloadCsv);
+    window.addEventListener("resize", resizeChart);
+    drawChart();
+  </script>
+</body>
+</html>
